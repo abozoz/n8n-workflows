@@ -1,0 +1,561 @@
+{
+  "name": "Schedule Updater",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "=https://cstickets.csmena.com/csmenahrms/API/getEmployeeSchedule/{{ $json.ID }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        576,
+        16
+      ],
+      "id": "cd226c0e-2bdc-46cc-8514-347ab54fc1e5",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];\n\nfunction dateToDay(dateStr) {\n  const d = new Date(dateStr);\n  if (isNaN(d)) return '';\n  return days[d.getDay()];\n}\n\nconst merged = {};\n\nfunction dayTemplate(name) {\n  const base = { Name: name };\n  for (const d of days) base[d] = '';\n  return base;\n}\n\nfor (const it of items) {\n  const row = it.json || {};\n\n  // FIX 1: handle \"Name \" (with space)\n  const name = (row['Name '] || row.Name || '').toString().trim();\n  if (!name) continue;\n\n  if (!merged[name]) merged[name] = dayTemplate(name);\n\n  // FIX 2: convert date → weekday\n  const day = dateToDay(row.Day);\n  const shift = row.Shift || '';\n\n  if (day) {\n    merged[name][day] = shift;\n  }\n}\n\nconst results = Object.values(merged);\nreturn results.map(r => ({ json: r }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        16
+      ],
+      "id": "7570acb8-9be3-4cf7-b819-c168b5d029b7",
+      "name": "Code in JavaScript",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -96,
+        16
+      ],
+      "id": "bd074e85-6784-4fb6-913f-bc267193fc0b",
+      "name": "Telegram Trigger",
+      "webhookId": "14d74526-7019-4eaf-b3f8-d5281ccecb02",
+      "credentials": {
+        "telegramApi": {
+          "id": "1tYbuF2NBvABoKJw",
+          "name": "RecieveRequest_shcedual"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "adef3fe0-250e-4a19-9aaa-31d9d23c43e3",
+              "leftValue": "={{ $json.ID }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        352,
+        16
+      ],
+      "id": "18b5f00e-d73a-4175-8391-515a67f7310f",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Telegram Trigger\"].json[\"message\"][\"chat\"][\"id\"]}}",
+        "text": "There is an error with the sheet you should check it. ",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        576,
+        208
+      ],
+      "id": "2890041a-c549-4594-9525-8fd7aed3020b",
+      "name": "Sheet error",
+      "webhookId": "e3d18beb-7180-4675-aeeb-54ceb82ea9a9",
+      "executeOnce": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "1tYbuF2NBvABoKJw",
+          "name": "RecieveRequest_shcedual"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "Your request recived ",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        576,
+        -176
+      ],
+      "id": "0e6c0704-fceb-41eb-8245-663e0d4a0dcb",
+      "name": "request recevied",
+      "webhookId": "e3d18beb-7180-4675-aeeb-54ceb82ea9a9",
+      "executeOnce": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "1tYbuF2NBvABoKJw",
+          "name": "RecieveRequest_shcedual"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "16S0KCnpRWsqrkg7bH05gFgahI513cq3BDbjnYogim0k",
+          "mode": "list",
+          "cachedResultName": "shifts row data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16S0KCnpRWsqrkg7bH05gFgahI513cq3BDbjnYogim0k/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Agents data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16S0KCnpRWsqrkg7bH05gFgahI513cq3BDbjnYogim0k/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        128,
+        16
+      ],
+      "id": "7e4ca1ac-b908-44b5-a900-1c6382721ad0",
+      "name": "Agents data",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1k4p71U8fmWqE9o7",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5801d506-e2da-4ad8-b3f4-a1e3139ecf44",
+              "name": "Name",
+              "value": "={{ $('Agents data').item.json.Name }}",
+              "type": "string"
+            },
+            {
+              "id": "14720ea9-451d-4a42-b34b-88311b5a823e",
+              "name": "Day",
+              "value": "={{ $json.start }}",
+              "type": "string"
+            },
+            {
+              "id": "d444bd8b-2def-4402-83f7-0fb1a86b45ea",
+              "name": "Shift",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        800,
+        16
+      ],
+      "id": "bbc4d2b7-0fe4-4e7b-976c-64b7f0f14bd7",
+      "name": "set up the names for the cod"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "16S0KCnpRWsqrkg7bH05gFgahI513cq3BDbjnYogim0k",
+          "mode": "list",
+          "cachedResultName": "weekly schedule",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16S0KCnpRWsqrkg7bH05gFgahI513cq3BDbjnYogim0k/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 266468606,
+          "mode": "list",
+          "cachedResultName": "Scheule",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16S0KCnpRWsqrkg7bH05gFgahI513cq3BDbjnYogim0k/edit#gid=266468606"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.Name }}",
+            "Tue": "={{ $json.Tuesday }}",
+            "Wed": "={{ $json.Wednesday }}",
+            "Thu": "={{ $json.Thursday }}",
+            "Fri": "={{ $json.Friday }}",
+            "Sat": "={{ $json.Saturday }}",
+            "Sun": "={{ $json.Sunday }}",
+            "Mon": "={{ $json.Monday }}"
+          },
+          "matchingColumns": [
+            "Name"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Gender",
+              "displayName": "Gender",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "WFH/WFO",
+              "displayName": "WFH/WFO",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Group",
+              "displayName": "Group",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Sun",
+              "displayName": "Sun",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Mon",
+              "displayName": "Mon",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Tue",
+              "displayName": "Tue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Wed",
+              "displayName": "Wed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Thu",
+              "displayName": "Thu",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fri",
+              "displayName": "Fri",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sat",
+              "displayName": "Sat",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "OFF days",
+              "displayName": "OFF days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Shifts ",
+              "displayName": "Shifts ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1248,
+        16
+      ],
+      "id": "a2463322-e13b-4314-8466-380d5e98ec1c",
+      "name": "Update teh schedual",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1k4p71U8fmWqE9o7",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Telegram Trigger\"].json[\"message\"][\"chat\"][\"id\"]}}",
+        "text": "The subdual is updated: https://docs.google.com/spreadsheets/d/16S0KCnpRWsqrkg7bH05gFgahI513cq3BDbjnYogim0k/edit?usp=sharing",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1472,
+        16
+      ],
+      "id": "e4c51262-a3e1-4bd2-8297-0f05107c8bca",
+      "name": "send a notification for the update",
+      "webhookId": "e3d18beb-7180-4675-aeeb-54ceb82ea9a9",
+      "executeOnce": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "1tYbuF2NBvABoKJw",
+          "name": "RecieveRequest_shcedual"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Telegram Trigger": [
+      {
+        "json": {
+          "update_id": 316476297,
+          "message": {
+            "message_id": 374,
+            "from": {
+              "id": 1793919739,
+              "is_bot": false,
+              "first_name": "Abozoz",
+              "username": "monther127k",
+              "language_code": "en"
+            },
+            "chat": {
+              "id": 1793919739,
+              "first_name": "Abozoz",
+              "username": "monther127k",
+              "type": "private"
+            },
+            "date": 1773449043,
+            "text": "."
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "set up the names for the cod",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Update teh schedual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Agents data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "request recevied",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheet error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agents data": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set up the names for the cod": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update teh schedual": {
+      "main": [
+        [
+          {
+            "node": "send a notification for the update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Amman",
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "binaryMode": "separate"
+  },
+  "versionId": "ecd64230-7e0f-43d8-a911-cbc8a2cd57f3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9dfa1217542a1f36c1b28cf797d4f6206480f6b55b6103a3d706565c2c7f1017"
+  },
+  "id": "pe3qnIgF53iSsTJ2",
+  "tags": []
+}
